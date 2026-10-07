@@ -1,0 +1,65 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+@theme inline {
+  --font-sans: Arial, Helvetica, sans-serif;
+}
+
+:root { color-scheme: dark; }
+body { margin: 0; background: #110E0C; color: #F5E7CF; }
+
+.grullo { background-image: radial-gradient(#F5E7CF08 .7px, transparent .7px); background-size: 5px 5px; }
+.grullo .rustic { font-family: Georgia, 'Times New Roman', serif; font-weight: 900; letter-spacing: -.035em; }
+.grullo .handwritten { font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
+.grullo .hero-type { font-size: clamp(2.65rem, 6.3vw, 5.4rem); line-height: 1.02; letter-spacing: -.055em; text-shadow: 2px 3px 0 #51382A; }
+.grullo .hero-outline { color: transparent; -webkit-text-stroke: 1px #E6CCA6; text-shadow: none; }
+.grullo .picado { position: relative; display: flex; justify-content: center; gap: 10px; height: 70px; overflow: hidden; padding: 0 6px; }
+.grullo .picado-string { position: absolute; top: 0; left: 0; right: 0; border-top: 2px solid #A98659; }
+.grullo .picado-flag { width: 73px; height: 63px; flex-shrink: 0; transform-origin: top center; animation: papel-sway 5s ease-in-out infinite; }
+.grullo .sign-button, .grullo .outline-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 15px 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; transition: background .2s, transform .2s; }
+.grullo .sign-button { color: #FFF0D8; background: #C8102E; border: 1px solid #EA6D64; box-shadow: 3px 3px 0 #6D1726; }
+.grullo .sign-button:hover { background: #AA0D27; transform: translateY(-1px); }
+.grullo .sign-button.small { padding: 10px 13px; font-size: 10px; }
+.grullo .outline-button { border: 1px dashed #B3956C; color: #F5E7CF; }
+.grullo .outline-button:hover { background: #F5E7CF0D; }
+.grullo .road-switch { display: flex; gap: 8px; }
+.grullo .road-option { display: flex; gap: 7px; align-items: center; text-align: left; border: 3px double #725D47; background: #211A16; padding: 8px 11px; font-family: Georgia, serif; font-weight: bold; font-size: 14px; }
+.grullo .road-option small { display: block; margin-top: 3px; font-family: Arial, sans-serif; font-size: 8px; font-weight: normal; letter-spacing: .04em; color: #D3BEA3; }
+.grullo .road-option.selected { background: #006341; border-color: #AEC79D; }
+.grullo .rating-stamp { border: 2px dashed #98744A; padding: 12px 15px; color: #F59E0B; transform: rotate(-2deg); }
+.grullo .sauce-board { position: relative; border: 5px double #876446; background-color: #181310; background-image: repeating-linear-gradient(0deg, transparent 0 4px, #F5E7CF03 4px 5px); padding: 32px 24px 21px; box-shadow: 8px 8px 0 #090807; }
+.grullo .price-seal { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 130px; height: 130px; border: 4px double #F5E7CF; border-radius: 50%; background: #C8102E; transform: rotate(12deg); box-shadow: 0 0 0 5px #C8102E; }
+.grullo .taco-scene { display: block; width: 100%; max-width: 350px; height: auto; margin: 5px auto 0; }
+.grullo .taco { transform-origin: 180px 110px; }
+.grullo .taco.dipping { animation: taco-dunk 1.25s ease-in-out both; }
+.grullo .splash { animation: sauce-splash 1.25s ease-in-out both; }
+.grullo .steam { animation: steam-rise 3s ease-in-out infinite; }
+.grullo .salsa-choice { padding: 13px 5px; border: 1px dashed #765C46; background: #110E0C55; transition: background .2s; }
+.grullo .salsa-choice:hover, .grullo .salsa-choice.active { background: #F5E7CF0C; }
+.grullo .salsa-choice.active { border-style: solid; box-shadow: inset 0 0 0 1px currentColor; }
+.grullo .fiesta-strip { border-block: 5px double #7C9B66; background: #006341; color: #F5E7CF; }
+.grullo .menu-filters { display: flex; flex-wrap: wrap; gap: 0; border-block: 1px solid #806447; }
+.grullo .menu-filter { padding: 17px 19px; color: #D3BEA3; font-size: 12px; font-weight: bold; border-bottom: 3px solid transparent; }
+.grullo .menu-filter:hover { color: #F59E0B; }
+.grullo .menu-filter.chosen { color: #F59E0B; border-bottom-color: #C8102E; background: #181310; }
+.grullo .menu-board { border: 5px double #7D6044; background: #181310; padding: 25px; box-shadow: 7px 7px 0 #090807; }
+.grullo .menu-item { padding: 25px 20px 30px; border-bottom: 1px dashed #F5E7CF25; }
+.grullo .menu-price { display: inline-block; border: 2px dashed #B9754D; padding: 8px 14px; color: #F59E0B; font-size: 25px; transform: rotate(-4deg); }
+.grullo .reviews-wall { border-block: 1px dashed #806447; background: radial-gradient(#AE7D4D18 1px, transparent 1px) 0 0 / 14px 14px, #181310; }
+.grullo .guest-check { position: relative; background: #EFDFC1; color: #39271D; padding: 32px; transform: rotate(2deg); box-shadow: 8px 8px 0 #0005; }
+.grullo .guest-check::before, .grullo .guest-check::after { content: ''; position: absolute; left: 0; right: 0; height: 12px; background: linear-gradient(135deg, #EFDFC1 25%, transparent 25%) -6px 0 / 12px 12px, linear-gradient(225deg, #EFDFC1 25%, transparent 25%) -6px 0 / 12px 12px; }
+.grullo .guest-check::before { top: -12px; transform: rotate(180deg); }
+.grullo .guest-check::after { bottom: -12px; }
+.grullo .receipt-top { text-align: center; }
+.grullo .receipt-arrow { padding: 10px; border: 1px dashed #A8875D; color: #F5E7CF; }
+.grullo .receipt-arrow:hover { background: #C8102E; }
+.grullo .location-sign { background: #181310; border: 5px double #806447; padding: 27px; }
+.grullo .location-sign.location-selected { border-color: #B9D88A; background: #12452F; }
+.grullo .footer-fiesta { border-top: 6px double #F5E7CF55; background: #006341; }
+@keyframes papel-sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(3deg); } }
+@keyframes taco-dunk { 0%, 100% { transform: translateY(0) rotate(0); } 40%, 60% { transform: translateY(64px) rotate(-12deg); } }
+@keyframes sauce-splash { 0%, 25%, 85%, 100% { opacity: 0; transform: translateY(8px); } 45%, 60% { opacity: 1; transform: translateY(-4px); } }
+@keyframes steam-rise { 0%, 100% { opacity: .2; transform: translateY(2px); } 50% { opacity: .5; transform: translateY(-5px); } }
+@media (min-width: 768px) { .grullo .menu-item:nth-child(odd) { border-right: 1px dashed #F5E7CF25; } }
+@media (max-width: 640px) { .grullo .price-seal { width: 108px; height: 108px; right: -5px; top: -28px; } .grullo .price-seal span { font-size: 8px; } .grullo .sauce-board { padding: 32px 16px 18px; } .grullo .menu-board { padding: 18px 12px; } .grullo .menu-item { padding-inline: 10px; } .grullo .menu-filter { flex: 1 1 50%; padding: 15px 8px; text-align: left; } .grullo .guest-check { padding: 26px; transform: rotate(1deg); } }
+@media (prefers-reduced-motion: reduce) { .grullo *, .grullo *::before, .grullo *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; } }
