@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Clock3,
   Flame,
@@ -122,8 +122,19 @@ export default function Page() {
   const [cardRotation, setCardRotation] = useState({ x: 0, y: 0 });
 
   const cardRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   const loc = locations[selectedLocation];
   const filteredMenu = menu.filter((item) => item.category === activeCategory);
+
+  // Guarantee seamless background video autoplay on all devices
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.defaultMuted = true;
+      videoRef.current.muted = true;
+      videoRef.current.play().catch(() => {});
+    }
+  }, []);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
@@ -143,21 +154,25 @@ export default function Page() {
   return (
     <div className="min-h-screen text-[#2C1810] font-sans selection:bg-[#C8102E] selection:text-white relative">
       
-      {/* FULL BACKGROUND VIDEO (Fixed across the full viewport) */}
+      {/* ========================================================================= */}
+      {/* FULL BACKGROUND VIDEO (Loaded from public/mexico-street.mp4)               */}
+      {/* ========================================================================= */}
       <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-[-1]">
         <video
+          ref={videoRef}
           autoPlay
           loop
           muted
           playsInline
-          className="w-full h-full object-cover filter contrast-[1.08] saturate-[1.15] brightness-[0.95]"
+          preload="auto"
+          className="w-full h-full object-cover filter contrast-[1.08] saturate-[1.15] brightness-[0.96]"
         >
           <source src="/mexico-street.mp4" type="video/mp4" />
         </video>
 
-        {/* Ambient Mexican Daylight & Stone Tint: guarantees clear readability */}
-        <div className="absolute inset-0 bg-[#FBF7F0]/85 backdrop-blur-[2px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#FBF7F0]/90 via-[#FBF7F0]/70 to-[#FBF7F0]/95" />
+        {/* Ambient Mexican Daylight & Stone Tint: balances video motion with text contrast */}
+        <div className="absolute inset-0 bg-[#FBF7F0]/80 backdrop-blur-[1.5px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#FBF7F0]/90 via-[#FBF7F0]/65 to-[#FBF7F0]/95" />
       </div>
 
       {/* Top Banner */}
