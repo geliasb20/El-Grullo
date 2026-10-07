@@ -10,8 +10,6 @@ import {
   UtensilsCrossed,
   Check,
   Sparkles,
-  ChevronRight,
-  Sun,
 } from "lucide-react";
 
 const locations = [
@@ -47,7 +45,7 @@ const menu = [
     price: "$14.99",
     badge: "LA ESPECIALIDAD",
     desc: "Tres tortillas de maíz pasadas por el adobo y doradas al comal, quesillo fundido, res deshebrada tierna, cebolla, cilantro y consomé caliente.",
-    prep: "Doradas al momento",
+    prep: "Doradas al comal",
   },
   {
     name: "Pizza Birria Artesanal",
@@ -127,7 +125,6 @@ export default function Page() {
   const loc = locations[selectedLocation];
   const filteredMenu = menu.filter((item) => item.category === activeCategory);
 
-  // 3D Perspective tilt handler
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
@@ -144,14 +141,31 @@ export default function Page() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBF7F0] text-[#2C1810] font-sans selection:bg-[#C8102E] selection:text-white relative">
+    <div className="min-h-screen text-[#2C1810] font-sans selection:bg-[#C8102E] selection:text-white relative">
       
-      {/* Colonial Stone Arch Accent & Tricolor Header Banner */}
+      {/* FULL BACKGROUND VIDEO (Fixed across the full viewport) */}
+      <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-[-1]">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover filter contrast-[1.08] saturate-[1.15] brightness-[0.95]"
+        >
+          <source src="/mexico-street.mp4" type="video/mp4" />
+        </video>
+
+        {/* Ambient Mexican Daylight & Stone Tint: guarantees clear readability */}
+        <div className="absolute inset-0 bg-[#FBF7F0]/85 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#FBF7F0]/90 via-[#FBF7F0]/70 to-[#FBF7F0]/95" />
+      </div>
+
+      {/* Top Banner */}
       <div className="w-full bg-[#1B1410] border-b-4 border-[#006847] shadow-sm select-none">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between text-xs text-[#EAD8C7] font-semibold">
           <div className="flex items-center gap-2">
             <span className="text-base">🇲🇽</span>
-            <span className="tracking-wide">INSPIRADO EN LA TRADICIÓN DE NUESTROS PUEBLOS MÁGICOS</span>
+            <span className="tracking-wide uppercase font-bold">Tradición y Sabor Auténtico de México</span>
           </div>
           <div className="hidden sm:flex items-center gap-4 text-[11px] font-bold">
             <span className="text-[#4ADE80]">★ COMAL TRADICIONAL</span>
@@ -164,11 +178,9 @@ export default function Page() {
       {/* Tricolor Ribbon Bar */}
       <div className="h-1.5 w-full bg-gradient-to-r from-[#006847] via-[#FFF] to-[#C8102E] shadow-sm" />
 
-      {/* Colonial Whitewashed Navigation Header */}
+      {/* Navigation Header */}
       <header className="sticky top-0 z-40 bg-[#FFFDF9]/95 backdrop-blur-md border-b-2 border-[#E7D6C3] shadow-md px-6 py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          
-          {/* Logo & Town Arch Badge */}
           <div className="flex items-center space-x-3">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#006847] via-[#FFF] to-[#C8102E] p-0.5 shadow-md">
               <div className="w-full h-full bg-[#FFFDF9] rounded-[14px] flex items-center justify-center font-serif font-black text-xl text-[#8B1A10]">
@@ -185,7 +197,6 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Navigation Links */}
           <nav className="hidden md:flex items-center space-x-7 text-xs font-black uppercase tracking-widest text-[#69432E]">
             <a href="#hero" className="hover:text-[#C8102E] transition-colors">El Comal 3D</a>
             <a href="#locations" className="hover:text-[#C8102E] transition-colors">Las 2 Sucursales</a>
@@ -193,7 +204,6 @@ export default function Page() {
             <a href="#reviews" className="hover:text-[#C8102E] transition-colors">Opiniones</a>
           </nav>
 
-          {/* Call to Action */}
           <a
             href={"tel:" + loc.phone.replace(/[^0-9]/g, "")}
             className="flex items-center space-x-2 bg-[#C8102E] hover:bg-[#A30D25] text-white text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-full shadow-lg shadow-[#C8102E]/25 transition-transform hover:scale-105"
@@ -204,29 +214,10 @@ export default function Page() {
         </div>
       </header>
 
-      {/* HERO SECTION: Background Video from User's Footage + 3D Perspective Card */}
-      <section id="hero" className="relative min-h-[640px] px-6 py-14 flex items-center overflow-hidden">
-        
-        {/* Real Town Video Background with Daylight Warmth */}
-        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover filter contrast-[1.08] saturate-[1.15] brightness-[0.92]"
-          >
-            {/* Points to the uploaded video file placed in your public/ folder */}
-            <source src="/videos/mexico-town.mp4" type="video/mp4" />
-          </video>
-          {/* Sunny Colonial Tint Overlay: Keeps text and 3D card 100% readable while showing the bridge and flags */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#FBF7F0]/95 via-[#FBF7F0]/85 to-[#FBF7F0]/65" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#FBF7F0] via-transparent to-transparent h-40 bottom-0" />
-        </div>
-
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10 w-full">
+      {/* Hero Section with Interactive 3D Showcase Card */}
+      <section id="hero" className="relative px-6 py-14 flex items-center">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center w-full">
           
-          {/* Left Column: Authentic Town Heritage */}
           <div className="lg:col-span-6 space-y-6">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFDF9]/90 backdrop-blur border border-[#DECDBB] text-xs font-black text-[#006847] shadow-sm">
               <span className="w-2.5 h-2.5 rounded-full bg-[#006847]" />
@@ -241,7 +232,7 @@ export default function Page() {
             </h1>
 
             <p className="text-[#5C3925] text-lg font-medium leading-relaxed max-w-xl">
-              Inspirado en la calidez de nuestras plazas y mercados tradicionales: tortillas pasadas por comal de hierro, carne suave deshebrada en su jugo y consomé hirviendo con aroma a laurel y guajillo.
+              Inspirado en la calidez de nuestras plazas y pueblos: tortillas pasadas por comal de hierro, carne suave deshebrada en su jugo y consomé hirviendo con aroma a laurel y guajillo.
             </p>
 
             <div className="flex flex-wrap gap-4 pt-2">
@@ -261,7 +252,6 @@ export default function Page() {
               </a>
             </div>
 
-            {/* Social Trust Rating */}
             <div className="flex items-center gap-3 pt-2">
               <div className="px-4 py-2 rounded-xl bg-[#FFFDF9]/90 backdrop-blur border border-[#D9C4AB] flex items-center gap-3 shadow-sm">
                 <div className="flex text-amber-500">
@@ -274,7 +264,7 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Right Column: 3D Interactive Perspective Showcase Card */}
+          {/* Interactive 3D Perspective Card */}
           <div className="lg:col-span-6 flex justify-center [perspective:1000px]">
             <div
               ref={cardRef}
@@ -284,9 +274,8 @@ export default function Page() {
                 transform: `rotateX(${cardRotation.x}deg) rotateY(${cardRotation.y}deg)`,
                 transformStyle: "preserve-3d",
               }}
-              className="w-full max-w-md p-7 rounded-3xl bg-[#FFFDF9]/95 backdrop-blur-xl border-4 border-[#006847] shadow-[0_20px_40px_rgba(44,24,16,0.15),0_0_20px_rgba(0,104,71,0.1)] transition-transform duration-150 ease-out relative select-none"
+              className="w-full max-w-md p-7 rounded-3xl bg-[#FFFDF9]/95 backdrop-blur-xl border-4 border-[#006847] shadow-[0_20px_40px_rgba(44,24,16,0.18)] transition-transform duration-150 ease-out relative select-none"
             >
-              {/* 3D Floating Header */}
               <div className="flex items-center justify-between border-b-2 border-[#EADAC8] pb-3 mb-4" style={{ transform: "translateZ(30px)" }}>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🌮</span>
@@ -302,17 +291,13 @@ export default function Page() {
                 </span>
               </div>
 
-              {/* 3D Taco Centerpiece */}
               <div className="relative py-6 text-center" style={{ transform: "translateZ(50px)" }}>
-                
-                {/* Rising Steam */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 flex space-x-3 pointer-events-none opacity-60">
                   <span className="text-xl animate-bounce delay-100">♨️</span>
                   <span className="text-xl animate-bounce delay-300">♨️</span>
                   <span className="text-xl animate-bounce delay-200">♨️</span>
                 </div>
 
-                {/* 3D Taco Graphic with Dunk Physics */}
                 <div
                   onClick={() => {
                     setIsSizzling(true);
@@ -327,7 +312,6 @@ export default function Page() {
                   🌮
                 </div>
 
-                {/* Hot Consomé Pot */}
                 <div
                   className="mt-5 mx-auto w-52 h-14 bg-gradient-to-r from-[#991B1B] via-[#7F1D1D] to-[#991B1B] rounded-full border-4 border-[#FBBF24] shadow-md flex items-center justify-center relative overflow-hidden"
                   style={{ transform: "translateZ(25px)" }}
@@ -339,7 +323,6 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* Interactive Actions */}
               <div className="grid grid-cols-2 gap-3 mt-4" style={{ transform: "translateZ(40px)" }}>
                 <button
                   onClick={() => {
@@ -361,7 +344,6 @@ export default function Page() {
                 </button>
               </div>
 
-              {/* Salsa Bar */}
               <div className="mt-5 pt-3 border-t-2 border-[#EADAC8]" style={{ transform: "translateZ(20px)" }}>
                 <div className="flex items-center justify-between text-xs mb-2">
                   <span className="font-black text-[#5C3925] uppercase">Salsa Tradicional:</span>
@@ -391,8 +373,8 @@ export default function Page() {
         </div>
       </section>
 
-      {/* DUAL LOCATIONS SECTION: Colonial Plaque Style */}
-      <section id="locations" className="bg-[#F3EBE0] border-y-2 border-[#DECDBB] py-16 px-6">
+      {/* Dual Locations Section */}
+      <section id="locations" className="bg-[#FFFDF9]/90 backdrop-blur-md border-y-2 border-[#DECDBB] py-16 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center max-w-xl mx-auto mb-12">
             <span className="text-xs font-black uppercase tracking-widest text-[#006847] bg-[#E2F0EA] border border-[#B6DEC9] px-3 py-1 rounded-full">
@@ -417,7 +399,7 @@ export default function Page() {
                     "text-left p-7 rounded-3xl border-2 transition-all cursor-pointer relative shadow-sm " +
                     (isSelected
                       ? "bg-[#FFFDF9] border-[#006847] ring-2 ring-[#006847]/40 shadow-md"
-                      : "bg-[#F9F4EC] border-[#DECDBB] hover:bg-[#FFFDF9]")
+                      : "bg-[#FBF7F0] border-[#DECDBB] hover:bg-[#FFFDF9]")
                   }
                 >
                   <div className="flex items-center justify-between">
@@ -458,7 +440,7 @@ export default function Page() {
         </div>
       </section>
 
-      {/* MENU SECTION: Sunlit Colonial Boards */}
+      {/* Menu Section */}
       <section id="menu" className="py-20 px-6 max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div>
@@ -470,7 +452,6 @@ export default function Page() {
             </h2>
           </div>
 
-          {/* Category Tabs */}
           <div className="flex flex-wrap gap-2">
             {categories.map((cat) => (
               <button
@@ -489,12 +470,11 @@ export default function Page() {
           </div>
         </div>
 
-        {/* Menu Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMenu.map((item) => (
             <div
               key={item.name}
-              className="bg-[#FFFDF9] border-2 border-[#DECDBB] hover:border-[#006847] rounded-3xl p-6 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"
+              className="bg-[#FFFDF9]/95 backdrop-blur border-2 border-[#DECDBB] hover:border-[#006847] rounded-3xl p-6 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -528,8 +508,8 @@ export default function Page() {
         </div>
       </section>
 
-      {/* REVIEWS SECTION */}
-      <section id="reviews" className="py-16 px-6 bg-[#F3EBE0] border-t-2 border-[#DECDBB]">
+      {/* Customer Reviews Section */}
+      <section id="reviews" className="py-16 px-6 bg-[#FFFDF9]/90 backdrop-blur-md border-t-2 border-[#DECDBB]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center max-w-xl mx-auto mb-12">
             <span className="text-xs font-black uppercase tracking-widest text-[#D97706] bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
@@ -567,7 +547,7 @@ export default function Page() {
         </div>
       </section>
 
-      {/* FOOTER */}
+      {/* Footer */}
       <footer className="border-t-2 border-[#DECDBB] bg-[#1E140F] py-12 px-6 text-xs text-[#DECDBB]">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
