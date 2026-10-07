@@ -5,9 +5,9 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type PointerEvent,
   type ReactNode,
   type RefObject,
+  type PointerEvent,
 } from "react";
 import {
   ArrowDown,
@@ -181,7 +181,6 @@ const styles = [
   ".spatial-taqueria .spatial-cursor{height:100%;transform-style:preserve-3d;transform:rotateX(var(--cursor-x,0deg)) rotateY(var(--cursor-y,0deg));transition:transform .22s cubic-bezier(.2,.7,.2,1);}",
   ".spatial-taqueria .spatial-content{height:100%;}",
   ".spatial-taqueria .papel{transform-origin:top center;animation:spatial-papel 5s ease-in-out infinite;}",
-  ".spatial-taqueria .bulb-sway{transform-box:fill-box;transform-origin:top center;animation:spatial-bulb 6s ease-in-out infinite;}",
   ".spatial-taqueria .steam{animation:spatial-steam 3s ease-in-out infinite;}",
   ".spatial-taqueria .steam.fast{animation-duration:1s;}",
   ".spatial-taqueria .ember{animation:spatial-ember 3s ease-in-out infinite;}",
@@ -197,7 +196,6 @@ const styles = [
   ".spatial-taqueria .splash{animation:spatial-splash 1.4s ease-in-out both;}",
   ".spatial-taqueria .barcode{height:23px;background:repeating-linear-gradient(90deg,#412B20 0 2px,transparent 2px 4px,#412B20 4px 5px,transparent 5px 9px);opacity:.5;}",
   "@keyframes spatial-papel{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}",
-  "@keyframes spatial-bulb{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}",
   "@keyframes spatial-steam{0%,100%{opacity:.2;transform:translateY(4px)}50%{opacity:.65;transform:translateY(-9px)}}",
   "@keyframes spatial-ember{0%,100%{opacity:.4}50%{opacity:1}}",
   "@keyframes spatial-bubble{0%,100%{opacity:.25;transform:scale(.6)}50%{opacity:.85;transform:scale(1.15)}}",
@@ -231,7 +229,10 @@ function useSpatialScroll(rootRef: RefObject<HTMLDivElement | null>) {
     const root = rootRef.current;
     if (!root) return;
 
-    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const preference = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    );
+
     let items: SpatialItem[] = [];
     let frame = 0;
     let dirty = true;
@@ -239,6 +240,9 @@ function useSpatialScroll(rootRef: RefObject<HTMLDivElement | null>) {
     let scrollY = window.scrollY;
     let viewportHeight = window.innerHeight;
     let previousTime = 0;
+    let impulse = 0;
+    let touchY: number | null = null;
+    let lastInputTime = -Infinity;
 
     const resizeObserver =
       typeof ResizeObserver !== "undefined"
@@ -248,13 +252,19 @@ function useSpatialScroll(rootRef: RefObject<HTMLDivElement | null>) {
         : null;
 
     function rebuildItems() {
-      const previous = new Map(items.map((item) => [item.anchor, item]));
+      const previous = new Map(
+        items.map((item) => [item.anchor, item]),
+      );
+
       resizeObserver?.disconnect();
 
       items = Array.from(
         root!.querySelectorAll<HTMLElement>("[data-spatial-anchor]"),
       ).flatMap((anchor, index) => {
-        const layer = anchor.querySelector<HTMLElement>("[data-spatial-layer]");
+        const layer = anchor.querySelector<HTMLElement>(
+          "[data-spatial-layer]",
+        );
+
         if (!layer) return [];
 
         const saved = previous.get(anchor);
@@ -293,33 +303,78 @@ function useSpatialScroll(rootRef: RefObject<HTMLDivElement | null>) {
       dirty = false;
     }
 
+    function start() {
+      if (!frame && !document.hidden && !preference.matches) {
+        previousTime = 0;
+        frame = requestAnimationFrame(renderFrame);
+      }
+    }
+
+    function kick(delta: number) {
+      if (
+        preference.matches ||
+        !Number.isFinite(delta) ||
+        delta === 0
+      ) {
+        return;
+      }
+
+      const strength = clamp(Math.abs(delta) / 80, 0.2, 1);
+      impulse = clamp(
+        impulse + Math.sign(delta) * strength * 0.8,
+        -2,
+        2,
+      );
+
+      start();
+    }
+
     function renderFrame(time: number) {
       frame = 0;
-      if (document.hidden || motionPreference.matches) return;
 
+      if (document.hidden || preference.matches) return;
       if (rebuild) rebuildItems();
       if (dirty) measure();
 
-      const elapsed = previousTime ? Math.min(time - previousTime, 64) : 16.67;
-      const smoothing = 1 - Math.exp(-elapsed / 105);
+      const elapsed = previousTime
+        ? Math.min(time - previousTime, 64)
+        : 16.67;
+
       previousTime = time;
+
+      const smoothing = 1 - Math.exp(-elapsed / 90);
       const viewportCenter = scrollY + viewportHeight / 2;
+
+      impulse *= Math.exp(-elapsed / 230);
 
       for (const item of items) {
         const offset = item.center - viewportCenter;
         const range = viewportHeight / 2 + item.height / 2;
-        const normalized = clamp(offset / Math.max(range, 1), -1, 1);
-        const distance = Math.abs(normalized);
 
         if (Math.abs(offset) > range + 180) {
           item.layer.style.willChange = "auto";
           continue;
         }
 
-        const pitchTarget = normalized >= 0 ? normalized * 4 : normalized * 2;
-        const zTarget = -20 * distance;
-        const scaleTarget = 1 - distance * .02;
-        const yTarget = clamp(-offset * item.speed, -24, 24);
+        const normalized = clamp(
+          offset / Math.max(range, 1),
+          -1,
+          1,
+        );
+
+        const distance = Math.abs(normalized);
+        const depth = 0.7 + item.speed * 10;
+        const pulse = Math.abs(impulse);
+
+        const pitchTarget =
+          (normalized >= 0 ? normalized * 4 : normalized * 2) +
+          impulse * depth * 1.6;
+
+        const zTarget = -20 * distance - pulse * depth * 12;
+        const scaleTarget = 1 - distance * 0.02 - pulse * 0.004;
+        const yTarget =
+          clamp(-offset * item.speed, -24, 24) -
+          impulse * depth * 6;
 
         item.y += (yTarget - item.y) * smoothing;
         item.z += (zTarget - item.z) * smoothing;
@@ -328,15 +383,19 @@ function useSpatialScroll(rootRef: RefObject<HTMLDivElement | null>) {
 
         const seconds = time / 1000;
         const floatingY =
-          Math.sin(seconds * .85 + item.phase) * item.float;
+          Math.sin(seconds * 0.85 + item.phase) * item.float;
         const floatingZ =
-          Math.cos(seconds * .65 + item.phase) * item.float * .6;
+          Math.cos(seconds * 0.65 + item.phase) * item.float * 0.6;
 
         const style = item.layer.style;
+
         style.willChange = "transform";
         style.setProperty("--scroll-y", item.y.toFixed(3) + "px");
         style.setProperty("--scroll-z", item.z.toFixed(3) + "px");
-        style.setProperty("--scroll-pitch", item.pitch.toFixed(3) + "deg");
+        style.setProperty(
+          "--scroll-pitch",
+          item.pitch.toFixed(3) + "deg",
+        );
         style.setProperty("--scroll-scale", item.scale.toFixed(5));
         style.setProperty("--float-y", floatingY.toFixed(3) + "px");
         style.setProperty("--float-z", floatingZ.toFixed(3) + "px");
@@ -345,16 +404,82 @@ function useSpatialScroll(rootRef: RefObject<HTMLDivElement | null>) {
       frame = requestAnimationFrame(renderFrame);
     }
 
-    function start() {
-      if (!frame && !document.hidden && !motionPreference.matches) {
-        previousTime = 0;
-        frame = requestAnimationFrame(renderFrame);
-      }
+    function onScroll() {
+      const next = window.scrollY;
+      const delta = next - scrollY;
+      scrollY = next;
+
+      if (performance.now() - lastInputTime > 100) kick(delta);
+      start();
     }
 
-    function onScroll() {
-      scrollY = window.scrollY;
-      start();
+    function onWheel(event: WheelEvent) {
+      if (event.ctrlKey) return;
+
+      lastInputTime = performance.now();
+
+      const unit =
+        event.deltaMode === 1
+          ? 16
+          : event.deltaMode === 2
+            ? viewportHeight
+            : 1;
+
+      kick(event.deltaY * unit);
+    }
+
+    function onTouchStart(event: TouchEvent) {
+      touchY = event.touches[0]?.clientY ?? null;
+    }
+
+    function onTouchMove(event: TouchEvent) {
+      if (event.touches.length !== 1) return;
+
+      const next = event.touches[0]?.clientY;
+      if (next === undefined || touchY === null) return;
+
+      lastInputTime = performance.now();
+      kick(touchY - next);
+      touchY = next;
+    }
+
+    function onTouchEnd() {
+      touchY = null;
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (
+        event.defaultPrevented ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const target = event.target;
+
+      if (
+        target instanceof HTMLElement &&
+        target.closest(
+          "input, textarea, select, button, a, [contenteditable]",
+        )
+      ) {
+        return;
+      }
+
+      let delta = 0;
+
+      if (event.key === "ArrowDown") delta = 45;
+      if (event.key === "ArrowUp") delta = -45;
+      if (event.key === "PageDown" || event.key === "End") delta = 160;
+      if (event.key === "PageUp" || event.key === "Home") delta = -160;
+      if (event.key === " ") delta = event.shiftKey ? -160 : 160;
+
+      if (delta) {
+        lastInputTime = performance.now();
+        kick(delta);
+      }
     }
 
     function onResize() {
@@ -375,8 +500,9 @@ function useSpatialScroll(rootRef: RefObject<HTMLDivElement | null>) {
     function onMotionChange() {
       if (frame) cancelAnimationFrame(frame);
       frame = 0;
+      impulse = 0;
 
-      if (motionPreference.matches) {
+      if (preference.matches) {
         for (const item of items) {
           item.layer.style.willChange = "auto";
         }
@@ -391,21 +517,43 @@ function useSpatialScroll(rootRef: RefObject<HTMLDivElement | null>) {
       start();
     });
 
-    mutationObserver.observe(root, { childList: true, subtree: true });
+    mutationObserver.observe(root, {
+      childList: true,
+      subtree: true,
+    });
+
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("wheel", onWheel, { passive: true });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    window.addEventListener("keydown", onKeyDown);
     window.addEventListener("resize", onResize, { passive: true });
     document.addEventListener("visibilitychange", onVisibilityChange);
-    motionPreference.addEventListener("change", onMotionChange);
+    preference.addEventListener("change", onMotionChange);
+
     start();
 
     return () => {
       if (frame) cancelAnimationFrame(frame);
+
       resizeObserver?.disconnect();
       mutationObserver.disconnect();
+
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
+      window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("resize", onResize);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      motionPreference.removeEventListener("change", onMotionChange);
+      document.removeEventListener(
+        "visibilitychange",
+        onVisibilityChange,
+      );
+      preference.removeEventListener("change", onMotionChange);
     };
   }, [rootRef]);
 }
@@ -414,7 +562,7 @@ function SpatialCard({
   children,
   className = "",
   anchorClassName = "",
-  speed = .035,
+  speed = 0.035,
   float = 0,
   phase = 0,
   tilt = true,
@@ -449,9 +597,18 @@ function SpatialCard({
     }
 
     const bounds = event.currentTarget.getBoundingClientRect();
+
     pointerRef.current = {
-      x: clamp((event.clientX - bounds.left) / bounds.width - .5, -.5, .5),
-      y: clamp((event.clientY - bounds.top) / bounds.height - .5, -.5, .5),
+      x: clamp(
+        (event.clientX - bounds.left) / Math.max(bounds.width, 1) - 0.5,
+        -0.5,
+        0.5,
+      ),
+      y: clamp(
+        (event.clientY - bounds.top) / Math.max(bounds.height, 1) - 0.5,
+        -0.5,
+        0.5,
+      ),
     };
 
     if (pointerFrameRef.current) return;
@@ -461,8 +618,14 @@ function SpatialCard({
       const layer = cursorRef.current;
       if (!layer) return;
 
-      layer.style.setProperty("--cursor-x", -pointerRef.current.y * 6 + "deg");
-      layer.style.setProperty("--cursor-y", pointerRef.current.x * 6 + "deg");
+      layer.style.setProperty(
+        "--cursor-x",
+        -pointerRef.current.y * 6 + "deg",
+      );
+      layer.style.setProperty(
+        "--cursor-y",
+        pointerRef.current.x * 6 + "deg",
+      );
     });
   }
 
@@ -490,7 +653,9 @@ function SpatialCard({
       <div data-spatial-layer="" className="spatial-scroll">
         <div className="spatial-float">
           <div ref={cursorRef} className="spatial-cursor">
-            <div className={"spatial-content " + className}>{children}</div>
+            <div className={"spatial-content " + className}>
+              {children}
+            </div>
           </div>
         </div>
       </div>
@@ -518,64 +683,49 @@ function CharroEmblem({ className = "" }: { className?: string }) {
 
 function StreetGarland() {
   return (
-    <div className="relative h-36 overflow-hidden sm:h-40" aria-hidden="true">
-      <svg viewBox="0 0 1200 100" preserveAspectRatio="xMidYMin slice" className="absolute inset-x-0 top-0 h-24 w-full">
-        <defs>
-          <radialGradient id="spatial-light-halo">
-            <stop offset="0%" stopColor="#F59E0B" stopOpacity=".55" />
-            <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <path d="M0 10Q600 92 1200 10" fill="none" stroke="#76604A" strokeWidth="2" />
-        {Array.from({ length: 12 }, (_, index) => {
-          const x = 50 + index * 100;
-          const normalized = (x - 600) / 600;
-          const y = 10 + 41 * (1 - normalized * normalized);
-
-          return (
-            <g key={index}>
-              <circle cx={x} cy={y + 24} r="30" fill="url(#spatial-light-halo)" />
-              <g className="bulb-sway" style={{ animationDelay: index * -.4 + "s" }}>
-                <path d={"M" + x + " " + y + "v13"} stroke="#76604A" strokeWidth="2" />
-                <rect x={x - 4} y={y + 11} width="8" height="7" rx="2" fill="#76604A" />
-                <ellipse cx={x} cy={y + 26} rx="7" ry="10" fill="#FFE0A1" stroke="#D99A2C" />
-                <path d={"M" + (x - 2) + " " + (y + 23) + "l2 7 2-7"} fill="none" stroke="#FFF9DF" strokeWidth="1.5" />
+    <div
+      className="mt-3 flex h-14 w-full justify-center gap-2 overflow-hidden border-t border-[#947557]/40"
+      aria-hidden="true"
+    >
+      {Array.from({ length: 14 }, (_, index) => (
+        <svg
+          key={index}
+          viewBox="0 0 90 78"
+          className="papel h-[50px] w-[58px] shrink-0"
+          style={{
+            color: ["#006341", "#FFF9EC", "#C8102E"][index % 3],
+            animationDelay: (index % 6) * -0.6 + "s",
+          }}
+        >
+          <defs>
+            <mask id={"spatial-flag-" + index}>
+              <rect width="90" height="78" fill="white" />
+              <path
+                d="M0 70L9 78L18 70L27 78L36 70L45 78L54 70L63 78L72 70L81 78L90 70V78H0Z"
+                fill="black"
+              />
+              <path
+                d="M45 13L54 25L45 37L36 25ZM45 44L55 55L45 66L35 55Z"
+                fill="black"
+              />
+              <g fill="black">
+                <circle cx="17" cy="21" r="5" />
+                <circle cx="73" cy="21" r="5" />
+                <circle cx="17" cy="53" r="5" />
+                <circle cx="73" cy="53" r="5" />
+                <circle cx="28" cy="38" r="4" />
+                <circle cx="62" cy="38" r="4" />
               </g>
-            </g>
-          );
-        })}
-      </svg>
-
-      <div className="absolute inset-x-0 top-20 flex justify-center gap-3 border-t border-[#947557]/50 sm:top-24">
-        {Array.from({ length: 18 }, (_, index) => (
-          <svg
-            key={index}
-            viewBox="0 0 90 78"
-            className="papel h-[58px] w-[68px] shrink-0"
-            style={{
-              color: ["#006341", "#FFF9EC", "#C8102E", "#E5A12B", "#0D9488"][index % 5],
-              animationDelay: (index % 6) * -.6 + "s",
-            }}
-          >
-            <defs>
-              <mask id={"spatial-flag-" + index}>
-                <rect width="90" height="78" fill="white" />
-                <path d="M0 70L9 78L18 70L27 78L36 70L45 78L54 70L63 78L72 70L81 78L90 70V78H0Z" fill="black" />
-                <path d="M45 13L54 25L45 37L36 25ZM45 44L55 55L45 66L35 55Z" fill="black" />
-                <g fill="black">
-                  <circle cx="17" cy="21" r="5" />
-                  <circle cx="73" cy="21" r="5" />
-                  <circle cx="17" cy="53" r="5" />
-                  <circle cx="73" cy="53" r="5" />
-                  <circle cx="28" cy="38" r="4" />
-                  <circle cx="62" cy="38" r="4" />
-                </g>
-              </mask>
-            </defs>
-            <rect width="90" height="78" fill="currentColor" mask={"url(#spatial-flag-" + index + ")"} />
-          </svg>
-        ))}
-      </div>
+            </mask>
+          </defs>
+          <rect
+            width="90"
+            height="78"
+            fill="currentColor"
+            mask={"url(#spatial-flag-" + index + ")"}
+          />
+        </svg>
+      ))}
     </div>
   );
 }
@@ -606,19 +756,15 @@ function ComalIllustration({
           <stop offset="0%" stopColor="#56534B" />
           <stop offset="100%" stopColor="#222521" />
         </radialGradient>
-        <radialGradient id="spatial-fire">
-          <stop offset="0%" stopColor="#F59E0B" stopOpacity=".5" />
-          <stop offset="100%" stopColor="#C8102E" stopOpacity="0" />
-        </radialGradient>
       </defs>
 
-      <ellipse cx="215" cy="275" rx="178" ry="66" fill="url(#spatial-fire)" />
-      <g className="ember" fill="#F59E0B">
+      <g className="ember" fill="#D97706">
         <path d="M87 258q-7-17 3-26q2 14 9 21Z" />
         <path d="M151 273q-8-17 1-29q5 14 12 22Z" />
         <path d="M267 270q-6-18 5-27q0 15 9 22Z" />
         <path d="M338 255q-8-15 1-26q4 13 11 21Z" />
       </g>
+
       <ellipse cx="215" cy="219" rx="170" ry="57" fill="#171A17" stroke="#767064" strokeWidth="4" />
       <ellipse cx="215" cy="205" rx="170" ry="57" fill="url(#spatial-iron)" />
       <ellipse cx="215" cy="205" rx="152" ry="45" fill="none" stroke="#938373" opacity=".35" />
@@ -630,7 +776,13 @@ function ComalIllustration({
         </g>
       )}
 
-      <g className={action === "sizzle" ? "steam fast" : "steam"} fill="none" stroke="#8B7057" strokeWidth="3" strokeLinecap="round">
+      <g
+        className={action === "sizzle" ? "steam fast" : "steam"}
+        fill="none"
+        stroke="#8B7057"
+        strokeWidth="3"
+        strokeLinecap="round"
+      >
         <path d="M133 131q-12-16 0-31t0-29" />
         <path d="M205 105q-12-16 0-31t0-29" />
         <path d="M278 134q-12-16 0-31t0-29" />
@@ -645,13 +797,19 @@ function ComalIllustration({
       </g>
 
       <g className={action === "dip" ? "taco dipping" : "taco"}>
-        <path d="M121 161q15-85 94-85t94 85q-20 48-94 48t-94-48" fill="#D88D36" stroke="#F2C26A" strokeWidth="3" />
+        <path
+          d="M121 161q15-85 94-85t94 85q-20 48-94 48t-94-48"
+          fill="#D88D36"
+          stroke="#F2C26A"
+          strokeWidth="3"
+        />
         <g fill="#A45B27" opacity=".6">
           <circle cx="168" cy="117" r="4" />
           <circle cx="222" cy="94" r="3" />
           <circle cx="265" cy="128" r="5" />
           <circle cx="204" cy="139" r="3" />
         </g>
+
         {hasMeat && (
           <g className={action === "sizzle" ? "meat-added" : undefined}>
             <path d="M132 157q82-31 166 0l-9 27q-72 27-148 0Z" fill="#71301D" />
@@ -661,6 +819,7 @@ function ComalIllustration({
             <path d="M146 177l27-7 18 15 21-13 21 13 28-15 19 9" fill="none" stroke="#F0D28A" strokeWidth="4" strokeLinecap="round" />
           </g>
         )}
+
         {withEverything && (
           <g className={action === "toppings" ? "tossed" : undefined}>
             <g fill="#81B450">
@@ -677,6 +836,7 @@ function ComalIllustration({
             </g>
           </g>
         )}
+
         <path d="M124 163q91 31 183 0l-9 24q-81 42-165 0Z" fill="#E5A43D" stroke="#F2C26A" strokeWidth="3" />
         <g fill="#A45B27" opacity=".5">
           <circle cx="175" cy="190" r="3" />
@@ -698,6 +858,7 @@ function ComalIllustration({
           </g>
         </g>
       )}
+
       {action === "sizzle" && (
         <g fill="#F5BD60">
           {[150, 177, 204, 236, 267, 291].map((x, index) => (
@@ -708,15 +869,17 @@ function ComalIllustration({
               cy={165 + (index % 2) * 10}
               r={index % 2 === 0 ? 2.5 : 3.5}
               style={{
-                animationDelay: index * .06 + "s",
+                animationDelay: index * 0.06 + "s",
                 "--spark-x": (index - 2.5) * 12 + "px",
               } as CSSProperties}
             />
           ))}
         </g>
       )}
+
       <path d="M129 307q86 36 172 0q-12 50-86 50t-86-50" fill="#A8452C" stroke="#E9B571" strokeWidth="2" />
       <path d="M136 316q79 27 158 0" fill="none" stroke="#F2CE94" strokeWidth="3" />
+
       {action === "dip" && (
         <g className="splash" fill="#D97535">
           <ellipse cx="141" cy="280" rx="4" ry="8" />
@@ -759,7 +922,8 @@ export default function Page() {
     video.playsInline = true;
 
     const tryPlayback = () => {
-      if (!active || document.hidden) return;
+      if (!active || document.hidden || !video.paused) return;
+
       video.muted = true;
       const playback = video.play();
       if (playback) void playback.catch(() => undefined);
@@ -789,6 +953,7 @@ export default function Page() {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+
       const audio = audioRef.current;
       if (audio && audio.state !== "closed") {
         void audio.close().catch(() => undefined);
@@ -815,38 +980,42 @@ export default function Page() {
       if (context.state === "suspended") await context.resume();
       if (context.state !== "running") return;
 
-      const duration = .65;
+      const duration = 0.65;
       const buffer = context.createBuffer(
         1,
         Math.floor(context.sampleRate * duration),
         context.sampleRate,
       );
+
       const samples = buffer.getChannelData(0);
 
       for (let index = 0; index < samples.length; index++) {
-        samples[index] = (Math.random() * 2 - 1) * .45;
+        samples[index] = (Math.random() * 2 - 1) * 0.45;
       }
 
       const source = context.createBufferSource();
       const filter = context.createBiquadFilter();
       const gain = context.createGain();
+
       source.buffer = buffer;
       filter.type = "highpass";
       filter.frequency.value = 1800;
 
       const now = context.currentTime;
-      gain.gain.setValueAtTime(.0001, now);
-      gain.gain.exponentialRampToValueAtTime(.12, now + .04);
-      gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       source.connect(filter);
       filter.connect(gain);
       gain.connect(context.destination);
+
       source.onended = () => {
         source.disconnect();
         filter.disconnect();
         gain.disconnect();
       };
+
       source.start(now);
       source.stop(now + duration);
     } catch {
@@ -874,6 +1043,7 @@ export default function Page() {
     }
 
     setAction(nextAction);
+
     timerRef.current = setTimeout(() => {
       setAction("idle");
       timerRef.current = null;
@@ -916,44 +1086,51 @@ export default function Page() {
 
       <a
         href="#main"
-        className={"sr-only z-50 rounded-xl bg-white/80 p-4 backdrop-blur-md focus:not-sr-only focus:fixed focus:left-4 focus:top-4 " + focus}
+        className={
+          "sr-only z-50 rounded-xl bg-white/80 p-4 backdrop-blur-md focus:not-sr-only focus:fixed focus:left-4 focus:top-4 " +
+          focus
+        }
       >
         Skip to content
       </a>
 
-      <div className="border-b border-white/60 bg-white/70 px-4 py-2 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-3 text-center text-[10px] font-bold uppercase tracking-[.14em] sm:text-xs">
-          <span className="flex h-4 w-7 overflow-hidden rounded-sm border border-[#35291F]/15" aria-label="Mexican flag colors">
-            <span className="w-1/3 bg-[#006341]" />
-            <span className="w-1/3 bg-white" />
-            <span className="w-1/3 bg-[#C8102E]" />
-          </span>
-          <span>El Grullo Express</span>
-          <span className="text-[#C8102E]">✦</span>
-          <span>Mexican roots. Clarksville appetite.</span>
-        </div>
-      </div>
-
-      <StreetGarland />
-
-      <header className="mx-auto max-w-7xl px-5 pb-10 sm:px-8">
+      <header className="mx-auto max-w-7xl px-5 pb-10 pt-5 sm:px-8">
         <div className={glass + " p-5 sm:p-6"}>
           <div className="flex flex-wrap items-center justify-between gap-6">
-            <a href="#main" aria-label="El Grullo Express home" className={"flex items-center gap-3 " + focus}>
-              <CharroEmblem className="hidden h-12 w-16 sm:block" />
-              <span>
-                <span className="block text-[10px] font-bold uppercase tracking-[.2em] text-[#006341]">
-                  Taquería · Clarksville, Tennessee
+            <div className="w-full sm:max-w-[390px]">
+              <a
+                href="#main"
+                aria-label="El Grullo Express home"
+                className={"flex items-center gap-3 " + focus}
+              >
+                <CharroEmblem className="hidden h-12 w-16 sm:block" />
+                <span>
+                  <span className="block text-[10px] font-bold uppercase tracking-[.2em] text-[#006341]">
+                    Taquería · Clarksville, Tennessee
+                  </span>
+                  <span className="rotulo mt-1 block text-3xl text-[#C8102E] sm:text-4xl">
+                    EL GRULLO{" "}
+                    <span className="text-[#006341]">EXPRESS</span>
+                  </span>
                 </span>
-                <span className="rotulo mt-1 block text-3xl text-[#C8102E]">
-                  EL GRULLO <span className="text-[#006341]">EXPRESS</span>
-                </span>
-              </span>
-            </a>
-            <nav aria-label="Main navigation" className="flex flex-wrap items-center gap-5 text-xs font-bold uppercase tracking-wider">
-              <a href="#menu" className={"hover:text-[#C8102E] " + focus}>La carta</a>
-              <a href="#reviews" className={"hover:text-[#C8102E] " + focus}>La clientela</a>
-              <a href="#visit" className={"hover:text-[#C8102E] " + focus}>Visítanos</a>
+              </a>
+
+              <StreetGarland />
+            </div>
+
+            <nav
+              aria-label="Main navigation"
+              className="flex flex-wrap items-center gap-5 text-xs font-bold uppercase tracking-wider"
+            >
+              <a href="#menu" className={"hover:text-[#C8102E] " + focus}>
+                La carta
+              </a>
+              <a href="#reviews" className={"hover:text-[#C8102E] " + focus}>
+                La clientela
+              </a>
+              <a href="#visit" className={"hover:text-[#C8102E] " + focus}>
+                Visítanos
+              </a>
               <a href={call} className={primary}>
                 <Phone size={15} aria-hidden="true" />
                 Call {location.name}
@@ -961,13 +1138,24 @@ export default function Page() {
             </nav>
           </div>
 
-          <SpatialCard speed={.018} float={1.2} phase={.5} tilt={false} anchorClassName="mt-5">
+          <SpatialCard
+            speed={0.018}
+            float={1.2}
+            phase={0.5}
+            tilt={false}
+            anchorClassName="mt-5"
+          >
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#35291F]/15 pt-4">
               <p className="flex items-center gap-2 text-xs font-bold text-[#69503C]">
                 <MapPin size={16} className="text-[#006341]" aria-hidden="true" />
                 Two branches. One big appetite.
               </p>
-              <div role="group" aria-label="Choose your branch" className="flex flex-wrap gap-2">
+
+              <div
+                role="group"
+                aria-label="Choose your branch"
+                className="flex flex-wrap gap-2"
+              >
                 {locations.map((item, index) => (
                   <button
                     key={item.name}
@@ -989,7 +1177,9 @@ export default function Page() {
                         {index === 0 ? "1951" : "3195"} Ft Campbell Blvd
                       </span>
                     </span>
-                    {branch === index && <Check size={15} aria-hidden="true" />}
+                    {branch === index && (
+                      <Check size={15} aria-hidden="true" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -999,18 +1189,33 @@ export default function Page() {
       </header>
 
       <main id="main">
-        <section aria-labelledby="hero-heading" className="mx-auto max-w-7xl px-5 pb-20 sm:px-8">
+        <section
+          aria-labelledby="hero-heading"
+          className="mx-auto max-w-7xl px-5 pb-20 sm:px-8"
+        >
           <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-12">
-            <SpatialCard speed={.024} float={1.4} phase={.3} className={glass + " p-6 sm:p-9"}>
+            <SpatialCard
+              speed={0.024}
+              float={1.4}
+              phase={0.3}
+              className={glass + " p-6 sm:p-9"}
+            >
               <span className="rotulo mb-7 inline-block rotate-[-3deg] rounded-lg border border-[#B45309]/30 bg-[#F59E0B]/75 px-4 py-2 text-lg">
                 ¡PÁSELE MARCHANTE!
               </span>
+
               <h1 id="hero-heading" className="rotulo hero-title">
-                REAL STREET<br />
-                <span className="paint-shadow text-[#006341]">TACOS.</span><br />
-                <span className="mt-3 inline-block text-[#A34E2C]">LEGENDARY</span><br />
+                REAL STREET
+                <br />
+                <span className="paint-shadow text-[#006341]">TACOS.</span>
+                <br />
+                <span className="mt-3 inline-block text-[#A34E2C]">
+                  LEGENDARY
+                </span>
+                <br />
                 <span className="text-[#C8102E]">BIRRIA.</span>
               </h1>
+
               <p className="script mt-7 text-2xl leading-relaxed text-[#9B4826]">
                 ¡Pásele joven, marchante, aquí sí hay birria!
               </p>
@@ -1018,6 +1223,7 @@ export default function Page() {
                 Warm comal. Rising steam. Your favorite people around the table.
                 Mexican street-food soul, right here in Clarksville.
               </p>
+
               <div className="mt-7 flex flex-wrap gap-3">
                 <a href="#menu" className={primary}>
                   Find your antojo
@@ -1028,10 +1234,26 @@ export default function Page() {
                   Step up to the comal
                 </a>
               </div>
-              <a href={googleReviews} target="_blank" rel="noopener noreferrer" className={"mt-7 inline-flex items-center gap-3 rounded-xl border border-white/60 bg-white/70 px-4 py-3 backdrop-blur-md " + focus}>
-                <Star size={22} fill="currentColor" className="text-[#B45309]" aria-hidden="true" />
+
+              <a
+                href={googleReviews}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={
+                  "mt-7 inline-flex items-center gap-3 rounded-xl border border-white/60 bg-white/70 px-4 py-3 backdrop-blur-md " +
+                  focus
+                }
+              >
+                <Star
+                  size={22}
+                  fill="currentColor"
+                  className="text-[#B45309]"
+                  aria-hidden="true"
+                />
                 <span>
-                  <strong className="rotulo block text-xl">4.5 ★ ON GOOGLE</strong>
+                  <strong className="rotulo block text-xl">
+                    4.5 ★ ON GOOGLE
+                  </strong>
                   <span className="block text-[10px] tracking-wider text-[#69503C]">
                     EXPRESS · 1,360+ REVIEWS
                   </span>
@@ -1041,50 +1263,101 @@ export default function Page() {
             </SpatialCard>
 
             <div id="comal" className="scroll-mt-8">
-              <SpatialCard speed={.065} float={3.5} phase={1.7} className={glass + " p-5 sm:p-7"}>
+              <SpatialCard
+                speed={0.065}
+                float={3.5}
+                phase={1.7}
+                className={glass + " p-5 sm:p-7"}
+              >
                 <article>
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-[10px] font-bold tracking-[.18em] text-[#006341]">COMAL CALLEJERO</p>
-                      <h2 className="rotulo mt-2 text-3xl sm:text-4xl">Birria Quesa Taco</h2>
-                      <p className="script mt-2 text-lg text-[#9B4826]">Tu taco. Tu ritual.</p>
+                      <p className="text-[10px] font-bold tracking-[.18em] text-[#006341]">
+                        COMAL CALLEJERO
+                      </p>
+                      <h2 className="rotulo mt-2 text-3xl sm:text-4xl">
+                        Birria Quesa Taco
+                      </h2>
+                      <p className="script mt-2 text-lg text-[#9B4826]">
+                        Tu taco. Tu ritual.
+                      </p>
                     </div>
                     <div className="flex h-24 w-24 shrink-0 rotate-[7deg] flex-col items-center justify-center rounded-full border-4 border-double border-white/80 bg-[#C8102E]/90 text-white backdrop-blur-md">
                       <span className="rotulo text-xs">CALIENTITO</span>
                       <strong className="rotulo text-3xl">$14.99</strong>
-                      <span className="text-[8px] font-bold">BIRRIA QUESA TACOS</span>
+                      <span className="text-[8px] font-bold">
+                        BIRRIA QUESA TACOS
+                      </span>
                     </div>
                   </div>
 
-                  <ComalIllustration action={action} hasMeat={hasMeat} withEverything={withEverything} />
+                  <ComalIllustration
+                    action={action}
+                    hasMeat={hasMeat}
+                    withEverything={withEverything}
+                  />
 
                   <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-[#35291F]/15 pb-4">
-                    <p className="text-xs font-bold uppercase tracking-wider text-[#69503C]">Se prepara. Se disfruta.</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#69503C]">
+                      Se prepara. Se disfruta.
+                    </p>
                     <button
                       type="button"
                       aria-pressed={soundEnabled}
                       onClick={() => setSoundEnabled((value) => !value)}
-                      className={"flex items-center gap-2 rounded-lg border border-white/60 bg-white/60 px-3 py-2 text-[10px] font-bold backdrop-blur-md hover:bg-white/80 " + focus}
+                      className={
+                        "flex items-center gap-2 rounded-lg border border-white/60 bg-white/60 px-3 py-2 text-[10px] font-bold backdrop-blur-md hover:bg-white/80 " +
+                        focus
+                      }
                     >
-                      {soundEnabled ? <Volume2 size={15} aria-hidden="true" /> : <VolumeX size={15} aria-hidden="true" />}
+                      {soundEnabled ? (
+                        <Volume2 size={15} aria-hidden="true" />
+                      ) : (
+                        <VolumeX size={15} aria-hidden="true" />
+                      )}
                       {soundEnabled ? "Sizzle sound on" : "Sizzle sound off"}
                     </button>
                   </div>
 
                   <div className="grid gap-2">
-                    <button type="button" disabled={busy} onClick={() => runAction("sizzle")} className={primary + " w-full disabled:cursor-wait disabled:opacity-60"}>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => runAction("sizzle")}
+                      className={
+                        primary +
+                        " w-full disabled:cursor-wait disabled:opacity-60"
+                      }
+                    >
                       <Flame size={17} aria-hidden="true" />
-                      {action === "sizzle" ? "¡Ssssss! Calientito…" : "01 · Echar Carne al Comal"}
+                      {action === "sizzle"
+                        ? "¡Ssssss! Calientito…"
+                        : "01 · Echar Carne al Comal"}
                     </button>
-                    <button type="button" disabled={busy || !hasMeat} onClick={() => runAction("toppings")} className={secondary + " w-full disabled:cursor-not-allowed disabled:opacity-50"}>
+                    <button
+                      type="button"
+                      disabled={busy || !hasMeat}
+                      onClick={() => runAction("toppings")}
+                      className={
+                        secondary +
+                        " w-full disabled:cursor-not-allowed disabled:opacity-50"
+                      }
+                    >
                       <Leaf size={17} aria-hidden="true" />
                       {action === "toppings" ? "¡Va con todo!" : "02 · Con Todo"}
                       {withEverything && <Check size={16} aria-hidden="true" />}
                     </button>
                   </div>
 
-                  <p className="mb-3 mt-5 text-[10px] font-bold tracking-[.18em] text-[#69503C]">ELIGE TU SALSA</p>
-                  <div role="group" aria-label="Choose salsa heat" className="grid grid-cols-3 gap-2">
+                  <p className="mb-3 mt-5 text-[10px] font-bold tracking-[.18em] text-[#69503C]">
+                    ELIGE TU SALSA
+                  </p>
+
+                  <div
+                    role="group"
+                    aria-label="Choose salsa heat"
+                    className="grid grid-cols-3 gap-2"
+                  >
                     {salsas.map((item, index) => (
                       <button
                         key={item.name}
@@ -1093,47 +1366,100 @@ export default function Page() {
                         onClick={() => setSalsaIndex(index)}
                         className={
                           "rounded-xl border-2 bg-white/60 px-1 py-3 backdrop-blur-md transition hover:bg-white/80 " +
-                          (salsaIndex === index ? "shadow-[0_3px_12px_rgba(30,25,20,0.1)] " : "border-white/60 ") +
+                          (salsaIndex === index
+                            ? "shadow-[0_3px_12px_rgba(30,25,20,0.1)] "
+                            : "border-white/60 ") +
                           focus
                         }
-                        style={{ borderColor: salsaIndex === index ? item.color : undefined }}
+                        style={{
+                          borderColor:
+                            salsaIndex === index ? item.color : undefined,
+                        }}
                       >
-                        <span className="mb-2 flex justify-center gap-1" style={{ color: item.color }}>
+                        <span
+                          className="mb-2 flex justify-center gap-1"
+                          style={{ color: item.color }}
+                        >
                           {Array.from({ length: item.flames }, (_, flame) => (
-                            <Flame key={flame} size={15} fill="currentColor" aria-hidden="true" />
+                            <Flame
+                              key={flame}
+                              size={15}
+                              fill="currentColor"
+                              aria-hidden="true"
+                            />
                           ))}
                         </span>
-                        <span className="block text-xs font-bold">{item.name}</span>
-                        <span className="mt-1 block text-[9px] text-[#69503C]">{item.heat}</span>
+                        <span className="block text-xs font-bold">
+                          {item.name}
+                        </span>
+                        <span className="mt-1 block text-[9px] text-[#69503C]">
+                          {item.heat}
+                        </span>
                       </button>
                     ))}
                   </div>
 
-                  <button type="button" disabled={busy || !hasMeat} onClick={() => runAction("dip")} className={primary + " mt-5 w-full disabled:cursor-not-allowed disabled:opacity-50"}>
+                  <button
+                    type="button"
+                    disabled={busy || !hasMeat}
+                    onClick={() => runAction("dip")}
+                    className={
+                      primary +
+                      " mt-5 w-full disabled:cursor-not-allowed disabled:opacity-50"
+                    }
+                  >
                     <UtensilsCrossed size={17} aria-hidden="true" />
                     {action === "dip" ? "¡Al consomé!" : "03 · Dip al Consomé"}
                   </button>
 
-                  <p role="status" className="mt-3 min-h-12 text-center text-xs leading-5 text-[#69503C]">{stationMessage}</p>
+                  <p
+                    role="status"
+                    className="mt-3 min-h-12 text-center text-xs leading-5 text-[#69503C]"
+                  >
+                    {stationMessage}
+                  </p>
+
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <button type="button" onClick={resetStation} className={"text-[10px] font-bold text-[#69503C] underline underline-offset-4 " + focus}>
+                    <button
+                      type="button"
+                      onClick={resetStation}
+                      className={
+                        "text-[10px] font-bold text-[#69503C] underline underline-offset-4 " +
+                        focus
+                      }
+                    >
                       Start a fresh taco
                     </button>
-                    <a href={call} className={"flex items-center gap-2 text-xs font-bold text-[#006341] underline underline-offset-4 " + focus}>
+                    <a
+                      href={call}
+                      className={
+                        "flex items-center gap-2 text-xs font-bold text-[#006341] underline underline-offset-4 " +
+                        focus
+                      }
+                    >
                       Call for the real thing
                       <ArrowUpRight size={14} aria-hidden="true" />
                     </a>
                   </div>
+
                   <p className="mt-4 text-center text-[10px] leading-5 text-[#69503C]">
-                    A playful preview. Confirm ingredients and salsa availability with your branch.
-                    Sound is optional and generated in your browser.
+                    A playful preview. Confirm ingredients and salsa availability
+                    with your branch. Sound is optional and generated in your
+                    browser.
                   </p>
                 </article>
               </SpatialCard>
             </div>
           </div>
 
-          <div aria-live="polite" aria-atomic="true" className={glass + " mt-12 flex flex-wrap justify-between gap-4 px-5 py-4 text-xs font-bold text-[#69503C]"}>
+          <div
+            aria-live="polite"
+            aria-atomic="true"
+            className={
+              glass +
+              " mt-12 flex flex-wrap justify-between gap-4 px-5 py-4 text-xs font-bold text-[#69503C]"
+            }
+          >
             <p className="flex items-center gap-2">
               <MapPin size={16} className="text-[#006341]" aria-hidden="true" />
               {location.address} · Clarksville, TN
@@ -1146,7 +1472,11 @@ export default function Page() {
         </section>
 
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
-          <SpatialCard speed={.02} tilt={false} className={glass + " px-5 py-5 text-center"}>
+          <SpatialCard
+            speed={0.02}
+            tilt={false}
+            className={glass + " px-5 py-5 text-center"}
+          >
             <p className="rotulo text-2xl tracking-wider text-[#006341] sm:text-3xl">
               COMAL CALIENTE
               <span className="mx-3 text-[#C8102E] sm:mx-7">✦</span>
@@ -1155,18 +1485,40 @@ export default function Page() {
           </SpatialCard>
         </div>
 
-        <section id="menu" aria-labelledby="menu-heading" className="mx-auto max-w-7xl scroll-mt-8 px-5 py-20 sm:px-8">
-          <SpatialCard speed={.022} tilt={false} className={glass + " flex flex-wrap items-end justify-between gap-6 p-6 sm:p-8"}>
+        <section
+          id="menu"
+          aria-labelledby="menu-heading"
+          className="mx-auto max-w-7xl scroll-mt-8 px-5 py-20 sm:px-8"
+        >
+          <SpatialCard
+            speed={0.022}
+            tilt={false}
+            className={
+              glass +
+              " flex flex-wrap items-end justify-between gap-6 p-6 sm:p-8"
+            }
+          >
             <div>
-              <p className="script text-2xl text-[#9B4826]">¿Qué le damos, marchante?</p>
-              <h2 id="menu-heading" className="rotulo mt-3 text-4xl text-[#006341] sm:text-5xl">
+              <p className="script text-2xl text-[#9B4826]">
+                ¿Qué le damos, marchante?
+              </p>
+              <h2
+                id="menu-heading"
+                className="rotulo mt-3 text-4xl text-[#006341] sm:text-5xl"
+              >
                 LA CARTA <span className="text-[#C8102E]">DEL PUESTO</span>
               </h2>
             </div>
-            <span className="rotulo rotate-2 rounded-lg border border-[#C8102E]/30 bg-[#C8102E]/85 px-5 py-3 text-xl text-white backdrop-blur-md">¡Aquí hay antojo!</span>
+            <span className="rotulo rotate-2 rounded-lg border border-[#C8102E]/30 bg-[#C8102E]/85 px-5 py-3 text-xl text-white backdrop-blur-md">
+              ¡Aquí hay antojo!
+            </span>
           </SpatialCard>
 
-          <div role="group" aria-label="Filter menu by category" className="mb-9 mt-8 flex flex-wrap gap-2">
+          <div
+            role="group"
+            aria-label="Filter menu by category"
+            className="mb-9 mt-8 flex flex-wrap gap-2"
+          >
             {categories.map((item) => (
               <button
                 key={item}
@@ -1186,57 +1538,119 @@ export default function Page() {
             ))}
           </div>
 
-          <div aria-live="polite" aria-atomic="true" className="grid gap-8 md:grid-cols-2">
-            {menu.filter((item) => item.category === category).map((item, index) => (
-              <SpatialCard
-                key={item.name}
-                speed={index % 2 === 0 ? .035 : .048}
-                float={2.1}
-                phase={index * 1.7 + .9}
-                className={glass + " flex flex-col p-6 sm:p-8"}
-              >
-                <article className="flex h-full flex-col">
-                  <div className="mb-5 flex items-center justify-between gap-4">
-                    <span className="text-[10px] font-bold tracking-[.18em] text-[#006341]">{item.stamp}</span>
-                    <span className="rotulo text-4xl text-[#8B7057]/50">0{index + 1}</span>
-                  </div>
-                  <h3 className="painted text-3xl">{item.name}</h3>
-                  <p className="mt-3 text-[11px] font-bold uppercase tracking-wider text-[#9B4826]">{item.ingredients}</p>
-                  <p className="mt-4 flex-1 text-sm leading-6 text-[#69503C]">{item.description}</p>
-                  <div className="mt-6 flex items-center justify-between gap-4 border-t border-[#35291F]/15 pt-5">
-                    <span className="rotulo -rotate-2 rounded-lg border border-white/60 bg-white/60 px-4 py-2 text-3xl text-[#9B4826] backdrop-blur-md">
-                      {item.price === null ? "Ask us" : "$" + item.price.toFixed(2)}
-                    </span>
-                    <a href={call} aria-label={"Call " + location.name + " about " + item.name} className={"flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#006341] " + focus}>
-                      Call to order
-                      <ArrowUpRight size={16} aria-hidden="true" />
-                    </a>
-                  </div>
-                </article>
-              </SpatialCard>
-            ))}
+          <div
+            aria-live="polite"
+            aria-atomic="true"
+            className="grid gap-8 md:grid-cols-2"
+          >
+            {menu
+              .filter((item) => item.category === category)
+              .map((item, index) => (
+                <SpatialCard
+                  key={item.name}
+                  speed={index % 2 === 0 ? 0.035 : 0.048}
+                  float={2.1}
+                  phase={index * 1.7 + 0.9}
+                  className={glass + " flex flex-col p-6 sm:p-8"}
+                >
+                  <article className="flex h-full flex-col">
+                    <div className="mb-5 flex items-center justify-between gap-4">
+                      <span className="text-[10px] font-bold tracking-[.18em] text-[#006341]">
+                        {item.stamp}
+                      </span>
+                      <span className="rotulo text-4xl text-[#8B7057]/50">
+                        0{index + 1}
+                      </span>
+                    </div>
+
+                    <h3 className="painted text-3xl">{item.name}</h3>
+                    <p className="mt-3 text-[11px] font-bold uppercase tracking-wider text-[#9B4826]">
+                      {item.ingredients}
+                    </p>
+                    <p className="mt-4 flex-1 text-sm leading-6 text-[#69503C]">
+                      {item.description}
+                    </p>
+
+                    <div className="mt-6 flex items-center justify-between gap-4 border-t border-[#35291F]/15 pt-5">
+                      <span className="rotulo -rotate-2 rounded-lg border border-white/60 bg-white/60 px-4 py-2 text-3xl text-[#9B4826] backdrop-blur-md">
+                        {item.price === null
+                          ? "Ask us"
+                          : "$" + item.price.toFixed(2)}
+                      </span>
+                      <a
+                        href={call}
+                        aria-label={
+                          "Call " + location.name + " about " + item.name
+                        }
+                        className={
+                          "flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#006341] " +
+                          focus
+                        }
+                      >
+                        Call to order
+                        <ArrowUpRight size={16} aria-hidden="true" />
+                      </a>
+                    </div>
+                  </article>
+                </SpatialCard>
+              ))}
           </div>
-          <p className={glass + " mt-8 px-5 py-3 text-xs leading-6 text-[#69503C]"}>
+
+          <p
+            className={
+              glass + " mt-8 px-5 py-3 text-xs leading-6 text-[#69503C]"
+            }
+          >
             Prices before tax. Menu, prices, and availability may vary by branch.
             Ask about today&apos;s caldos and desserts.
           </p>
         </section>
 
-        <section id="reviews" aria-labelledby="reviews-heading" className="mx-auto max-w-7xl scroll-mt-8 px-5 pb-20 sm:px-8">
+        <section
+          id="reviews"
+          aria-labelledby="reviews-heading"
+          className="mx-auto max-w-7xl scroll-mt-8 px-5 pb-20 sm:px-8"
+        >
           <div className="grid items-center gap-10 lg:grid-cols-[.9fr_1.1fr] lg:gap-12">
-            <SpatialCard speed={.026} float={1.1} phase={2} className={glass + " p-6 sm:p-8"}>
+            <SpatialCard
+              speed={0.026}
+              float={1.1}
+              phase={2}
+              className={glass + " p-6 sm:p-8"}
+            >
               <CharroEmblem className="mb-4 h-16 w-24" />
-              <p className="script text-2xl text-[#9B4826]">La clientela tiene la palabra.</p>
-              <h2 id="reviews-heading" className="rotulo mt-4 text-4xl leading-none sm:text-5xl">
-                BUEN TACO.<br />
-                BUENA CHARLA.<br />
+              <p className="script text-2xl text-[#9B4826]">
+                La clientela tiene la palabra.
+              </p>
+              <h2
+                id="reviews-heading"
+                className="rotulo mt-4 text-4xl leading-none sm:text-5xl"
+              >
+                BUEN TACO.
+                <br />
+                BUENA CHARLA.
+                <br />
                 <span className="text-[#006341]">BUENA ONDA.</span>
               </h2>
               <p className="mt-6 max-w-sm text-sm leading-7 text-[#69503C]">
-                Real Google review excerpts from Express guests, republished by Wanderlog.
+                Real Google review excerpts from Express guests, republished by
+                Wanderlog.
               </p>
-              <a href={googleReviews} target="_blank" rel="noopener noreferrer" className={"mt-6 inline-flex items-center gap-3 rounded-xl border border-white/60 bg-white/60 px-4 py-3 backdrop-blur-md " + focus}>
-                <Star size={23} fill="currentColor" className="text-[#B45309]" aria-hidden="true" />
+              <a
+                href={googleReviews}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={
+                  "mt-6 inline-flex items-center gap-3 rounded-xl border border-white/60 bg-white/60 px-4 py-3 backdrop-blur-md " +
+                  focus
+                }
+              >
+                <Star
+                  size={23}
+                  fill="currentColor"
+                  className="text-[#B45309]"
+                  aria-hidden="true"
+                />
                 <strong className="rotulo text-2xl">4.5 / 5</strong>
                 <span className="text-[10px] font-bold">EXPRESS ON GOOGLE</span>
                 <ArrowUpRight size={16} aria-hidden="true" />
@@ -1244,42 +1658,102 @@ export default function Page() {
             </SpatialCard>
 
             <div className="mx-auto w-full max-w-lg">
-              <SpatialCard speed={.05} float={2.7} phase={3.4} className={glass + " p-7 sm:p-9"}>
+              <SpatialCard
+                speed={0.05}
+                float={2.7}
+                phase={3.4}
+                className={glass + " p-7 sm:p-9"}
+              >
                 <article>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="rotulo text-3xl">EL GRULLO</p>
-                      <p className="text-[10px] font-bold tracking-widest">EXPRESS · CLARKSVILLE, TN</p>
+                      <p className="text-[10px] font-bold tracking-widest">
+                        EXPRESS · CLARKSVILLE, TN
+                      </p>
                     </div>
-                    <span className="rotulo -rotate-12 rounded-sm border-2 border-[#006341]/60 px-2 py-1 text-sm text-[#006341]">CON SABOR</span>
+                    <span className="rotulo -rotate-12 rounded-sm border-2 border-[#006341]/60 px-2 py-1 text-sm text-[#006341]">
+                      CON SABOR
+                    </span>
                   </div>
+
                   <div className="my-5 flex justify-between gap-3 border-y border-dashed border-[#69503C]/40 py-3 font-mono text-[10px]">
                     <span>COMPROBANTE DE CANTINA</span>
                     <span>NO. 00{reviewIndex + 1}</span>
                   </div>
-                  <div aria-live="polite" aria-atomic="true" className="min-h-60">
-                    <p className="text-xs font-bold tracking-[.18em] text-[#006341]">{review.topic}</p>
-                    <blockquote className="painted mt-5 text-3xl leading-snug sm:text-4xl">“{review.quote}”</blockquote>
+
+                  <div
+                    aria-live="polite"
+                    aria-atomic="true"
+                    className="min-h-60"
+                  >
+                    <p className="text-xs font-bold tracking-[.18em] text-[#006341]">
+                      {review.topic}
+                    </p>
+                    <blockquote className="painted mt-5 text-3xl leading-snug sm:text-4xl">
+                      “{review.quote}”
+                    </blockquote>
                     <p className="mt-6 text-sm font-bold">— {review.author}</p>
-                    <p className="mt-1 text-[10px] tracking-widest text-[#69503C]">GOOGLE REVIEW EXCERPT</p>
+                    <p className="mt-1 text-[10px] tracking-widest text-[#69503C]">
+                      GOOGLE REVIEW EXCERPT
+                    </p>
                   </div>
-                  <a href={review.source} target="_blank" rel="noopener noreferrer" className={"mt-5 flex items-center justify-between gap-3 border-t border-dashed border-[#69503C]/40 pt-4 text-[10px] uppercase tracking-widest text-[#69503C] " + focus}>
+
+                  <a
+                    href={review.source}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={
+                      "mt-5 flex items-center justify-between gap-3 border-t border-dashed border-[#69503C]/40 pt-4 text-[10px] uppercase tracking-widest text-[#69503C] " +
+                      focus
+                    }
+                  >
                     Read source on Wanderlog
                     <ArrowUpRight size={14} aria-hidden="true" />
                   </a>
-                  <p className="script my-5 text-center text-2xl text-[#C8102E]">¡Gracias, vuelva pronto!</p>
-                  <div className="barcode mx-auto max-w-48" aria-hidden="true" />
+
+                  <p className="script my-5 text-center text-2xl text-[#C8102E]">
+                    ¡Gracias, vuelva pronto!
+                  </p>
+                  <div
+                    className="barcode mx-auto max-w-48"
+                    aria-hidden="true"
+                  />
                 </article>
               </SpatialCard>
+
               <div className="mt-8 flex items-center justify-between gap-4">
                 <p className="rounded-lg border border-white/60 bg-white/70 px-3 py-2 font-mono text-xs backdrop-blur-md">
                   TICKET 0{reviewIndex + 1} / 0{reviews.length}
                 </p>
                 <div className="flex gap-2">
-                  <button type="button" aria-label="Previous review" onClick={() => setReviewIndex((index) => (index + reviews.length - 1) % reviews.length)} className={"rounded-xl border border-white/60 bg-white/70 p-3 backdrop-blur-md hover:bg-white/80 " + focus}>
+                  <button
+                    type="button"
+                    aria-label="Previous review"
+                    onClick={() =>
+                      setReviewIndex(
+                        (index) =>
+                          (index + reviews.length - 1) % reviews.length,
+                      )
+                    }
+                    className={
+                      "rounded-xl border border-white/60 bg-white/70 p-3 backdrop-blur-md hover:bg-white/80 " +
+                      focus
+                    }
+                  >
                     <ChevronLeft size={18} aria-hidden="true" />
                   </button>
-                  <button type="button" aria-label="Next review" onClick={() => setReviewIndex((index) => (index + 1) % reviews.length)} className={"rounded-xl border border-white/60 bg-white/70 p-3 backdrop-blur-md hover:bg-white/80 " + focus}>
+                  <button
+                    type="button"
+                    aria-label="Next review"
+                    onClick={() =>
+                      setReviewIndex((index) => (index + 1) % reviews.length)
+                    }
+                    className={
+                      "rounded-xl border border-white/60 bg-white/70 p-3 backdrop-blur-md hover:bg-white/80 " +
+                      focus
+                    }
+                  >
                     <ChevronRight size={18} aria-hidden="true" />
                   </button>
                 </div>
@@ -1288,54 +1762,112 @@ export default function Page() {
           </div>
         </section>
 
-        <section id="visit" aria-labelledby="visit-heading" className="mx-auto max-w-7xl scroll-mt-8 px-5 pb-20 sm:px-8">
-          <SpatialCard speed={.02} tilt={false} className={glass + " p-6 text-center sm:p-8"}>
-            <p className="script text-2xl text-[#9B4826]">Aquí lo esperamos.</p>
-            <h2 id="visit-heading" className="rotulo mt-3 text-4xl text-[#006341] sm:text-5xl">NOS VEMOS EN EL GRULLO.</h2>
-            <p className="mt-4 text-sm text-[#69503C]">Two Clarksville stops on Fort Campbell Boulevard.</p>
+        <section
+          id="visit"
+          aria-labelledby="visit-heading"
+          className="mx-auto max-w-7xl scroll-mt-8 px-5 pb-20 sm:px-8"
+        >
+          <SpatialCard
+            speed={0.02}
+            tilt={false}
+            className={glass + " p-6 text-center sm:p-8"}
+          >
+            <p className="script text-2xl text-[#9B4826]">
+              Aquí lo esperamos.
+            </p>
+            <h2
+              id="visit-heading"
+              className="rotulo mt-3 text-4xl text-[#006341] sm:text-5xl"
+            >
+              NOS VEMOS EN EL GRULLO.
+            </h2>
+            <p className="mt-4 text-sm text-[#69503C]">
+              Two Clarksville stops on Fort Campbell Boulevard.
+            </p>
           </SpatialCard>
 
           <div className="mt-10 grid gap-8 md:grid-cols-2">
             {locations.map((item, index) => (
               <SpatialCard
                 key={item.name}
-                speed={index === 0 ? .032 : .044}
+                speed={index === 0 ? 0.032 : 0.044}
                 float={1.6}
                 phase={index * 2 + 1}
-                className={glass + " p-7 sm:p-8 " + (branch === index ? "ring-2 ring-[#006341]/65" : "")}
+                className={
+                  glass +
+                  " p-7 sm:p-8 " +
+                  (branch === index ? "ring-2 ring-[#006341]/65" : "")
+                }
               >
                 <article>
                   <div className="mb-5 flex items-center justify-between gap-3">
-                    <span className="font-mono text-[10px] tracking-widest text-[#69503C]">FORT CAMPBELL BLVD</span>
+                    <span className="font-mono text-[10px] tracking-widest text-[#69503C]">
+                      FORT CAMPBELL BLVD
+                    </span>
                     {branch === index && (
                       <span className="flex items-center gap-1 text-[10px] font-bold text-[#006341]">
-                        <Check size={14} aria-hidden="true" />SELECTED
+                        <Check size={14} aria-hidden="true" />
+                        SELECTED
                       </span>
                     )}
                   </div>
-                  <h3 className="rotulo text-4xl text-[#006341]">{item.title}</h3>
+
+                  <h3 className="rotulo text-4xl text-[#006341]">
+                    {item.title}
+                  </h3>
                   <address className="mt-4 text-sm not-italic leading-7 text-[#69503C]">
-                    {item.address}<br />Clarksville, TN<br />
-                    <a href={phoneLink(item.phone)} className={"font-bold text-[#35291F] " + focus}>{item.phone}</a>
+                    {item.address}
+                    <br />
+                    Clarksville, TN
+                    <br />
+                    <a
+                      href={phoneLink(item.phone)}
+                      className={"font-bold text-[#35291F] " + focus}
+                    >
+                      {item.phone}
+                    </a>
                   </address>
+
                   <dl className="mt-5 space-y-3 border-y border-dashed border-[#69503C]/40 py-4 text-xs">
-                    <div className="flex justify-between gap-4"><dt>Sunday–Thursday</dt><dd>{item.opens}–10 PM</dd></div>
-                    <div className="flex justify-between gap-4"><dt>Friday–Saturday</dt><dd>{item.opens}–11 PM</dd></div>
+                    <div className="flex justify-between gap-4">
+                      <dt>Sunday–Thursday</dt>
+                      <dd>{item.opens}–10 PM</dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt>Friday–Saturday</dt>
+                      <dd>{item.opens}–11 PM</dd>
+                    </div>
                   </dl>
-                  <button type="button" aria-pressed={branch === index} onClick={() => setBranch(index)} className={secondary + " mt-6 w-full"}>
-                    {branch === index ? "Your selected branch" : "Choose this branch"}
+
+                  <button
+                    type="button"
+                    aria-pressed={branch === index}
+                    onClick={() => setBranch(index)}
+                    className={secondary + " mt-6 w-full"}
+                  >
+                    {branch === index
+                      ? "Your selected branch"
+                      : "Choose this branch"}
                     <ArrowUpRight size={16} aria-hidden="true" />
                   </button>
                 </article>
               </SpatialCard>
             ))}
           </div>
+
           <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <a href={directionsLink(location.address)} target="_blank" rel="noopener noreferrer" className={primary}>
-              <MapPin size={17} aria-hidden="true" />Directions to {location.name}
+            <a
+              href={directionsLink(location.address)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={primary}
+            >
+              <MapPin size={17} aria-hidden="true" />
+              Directions to {location.name}
             </a>
             <a href={call} className={secondary}>
-              <Phone size={17} aria-hidden="true" />Call {location.name}
+              <Phone size={17} aria-hidden="true" />
+              Call {location.name}
             </a>
           </div>
         </section>
@@ -1346,14 +1878,27 @@ export default function Page() {
           <div className="flex items-center gap-3">
             <CharroEmblem className="h-12 w-16" />
             <div>
-              <p className="rotulo text-3xl text-[#006341]">EL GRULLO EXPRESS</p>
-              <p className="mt-2 text-[10px] uppercase tracking-widest text-[#69503C]">Mexican roots. Clarksville appetite.</p>
+              <p className="rotulo text-3xl text-[#006341]">
+                EL GRULLO EXPRESS
+              </p>
+              <p className="mt-2 text-[10px] uppercase tracking-widest text-[#69503C]">
+                Mexican roots. Clarksville appetite.
+              </p>
             </div>
           </div>
           <p className="script flex items-center gap-2 text-2xl text-[#9B4826]">
-            <Sparkles size={20} aria-hidden="true" />Del comal al corazón.
+            <Sparkles size={20} aria-hidden="true" />
+            Del comal al corazón.
           </p>
-          <a href="#main" className={"text-xs font-bold uppercase tracking-widest text-[#006341] " + focus}>Back to top ↑</a>
+          <a
+            href="#main"
+            className={
+              "text-xs font-bold uppercase tracking-widest text-[#006341] " +
+              focus
+            }
+          >
+            Back to top ↑
+          </a>
         </div>
       </footer>
     </div>
