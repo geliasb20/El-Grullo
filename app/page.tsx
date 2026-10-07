@@ -1,3 +1,4 @@
+```tsx
 "use client";
 
 import React, { useState } from "react";
@@ -26,65 +27,55 @@ const locations = [
     opens: "7 AM",
     note: "Your other neighborhood stop for authentic flavor.",
   },
-] as const;
+];
 
 const categories = [
   "Birria Specials",
   "Street Tacos",
   "Platos & Caldos",
   "Postres & Drinks",
-] as const;
+];
 
-type Category = (typeof categories)[number];
-
-type MenuItem = {
-  name: string;
-  category: Category;
-  price: number | null;
-  description: string;
-  label: string;
-};
-
-const menu: MenuItem[] = [
+const menu = [
   {
     name: "Birria Quesa Tacos",
     category: "Birria Specials",
-    price: 14.99,
+    price: "$14.99",
     description: "The birria-and-cheese combination your cravings came for.",
     label: "THE SIGNATURE",
   },
   {
     name: "Pizza Birria",
     category: "Birria Specials",
-    price: 28.67,
+    price: "$28.67",
     description: "Big birria energy. Made for your next shared feast.",
     label: "GO BIG",
   },
   {
     name: "Street Tacos",
     category: "Street Tacos",
-    price: 5.04,
+    price: "$5.04",
     description: "Classic Mexican street flavor, one delicious bite at a time.",
     label: "STREET FAVORITE",
   },
   {
     name: "Carne Asada Fries",
     category: "Platos & Caldos",
-    price: 13.26,
+    price: "$13.26",
     description: "Carne asada meets fries. A serious answer to a serious appetite.",
     label: "COMFORT FOOD",
   },
   {
     name: "Menudo & Pozole",
     category: "Platos & Caldos",
-    price: null,
+    price: "Market Price",
     description: "Ask your selected branch about today's caldos and availability.",
     label: "ASK THE BRANCH",
   },
   {
     name: "32oz Aguas Frescas",
     category: "Postres & Drinks",
-    price: 6.92,
+    price: "$6.92",
     description: "A refreshing companion to your Mexican favorites. Ask about today's flavors.",
     label: "COOL IT DOWN",
   },
@@ -99,87 +90,53 @@ const reviews = [
   {
     author: "Nichole M",
     topic: "THE DRIVE-THRU",
-    text: "didn't have to wait longer then 10 minutes",
+    text: "didn't have to wait longer than 10 minutes",
   },
   {
     author: "Bobbie S",
     topic: "THE FLAVOR",
     text: "Authentic Mexican food at its finest taste!!",
   },
-] as const;
+];
 
 const salsas = [
   { name: "Verde Suave", heat: "Mild & mellow", color: "#82A84B" },
   { name: "Roja Picante", heat: "A little kick", color: "#C8102E" },
   { name: "Habanero Fuego", heat: "Bring the heat", color: "#E57827" },
-] as const;
-
-const menuTitles: Record<string, { title: string; detail: string }> = {
-  "Birria Quesa Tacos": { title: "Quesabirrias con Consomé", detail: "Birria · queso · consomé" },
-  "Pizza Birria": { title: "Pizza Birria", detail: "Birria · queso · made to share" },
-  "Street Tacos": { title: "Tacos de la Calle", detail: "Street-style tacos · ask about fillings" },
-  "Carne Asada Fries": { title: "Carne Asada Fries", detail: "Carne asada · fries" },
-  "Menudo & Pozole": { title: "Menudo y Pozole", detail: "Traditional caldos · ask about availability" },
-  "32oz Aguas Frescas": { title: "Aguas Frescas de 32oz", detail: "32 ounces · ask about today's flavors" },
-};
-
-function PapelPicado() {
-  const flags = [
-    "#006341", "#F5E7CF", "#C8102E", "#006341", "#F5E7CF", "#C8102E",
-    "#006341", "#F5E7CF", "#C8102E", "#006341", "#F5E7CF", "#C8102E"
-  ];
-  return (
-    <div className="w-full overflow-hidden flex justify-center py-2 bg-[#0C0F0E]" aria-hidden="true">
-      <div className="flex gap-2 min-w-[800px] justify-around opacity-90">
-        {flags.map((color, index) => (
-          <div
-            key={index}
-            className="w-12 h-10 border-b-4 border-dashed transition-transform hover:-translate-y-1 duration-300"
-            style={{ backgroundColor: color, borderColor: "#1A1412" }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TacoIllustration({ dipping }: { dipping: boolean }) {
-  return (
-    <div className="relative w-64 h-56 mx-auto flex flex-col items-center justify-center">
-      <div
-        className={`text-7xl transition-transform duration-500 ease-out select-none ${
-          dipping ? "translate-y-12 rotate-6 scale-95" : "hover:-translate-y-2"
-        }`}
-      >
-        🌮
-      </div>
-      <div className="mt-4 w-40 h-10 bg-[#8F2D1C] rounded-full border-4 border-[#EDB66C] shadow-inner flex items-center justify-center">
-        <span className="text-[10px] uppercase font-bold tracking-widest text-[#F5D4A2]">Consomé</span>
-      </div>
-      {dipping && (
-        <div className="absolute bottom-12 flex space-x-4 animate-ping text-xs text-[#E57827]">
-          <span>💧</span>
-          <span>💧</span>
-        </div>
-      )}
-    </div>
-  );
-}
+];
 
 export default function Page() {
-  const [selectedLocation, setSelectedLocation] = useState<number>(0);
-  const [activeCategory, setActiveCategory] = useState<Category>("Birria Specials");
+  const [selectedLocation, setSelectedLocation] = useState(0);
+  const [activeCategory, setActiveCategory] = useState("Birria Specials");
   const [isDipping, setIsDipping] = useState(false);
-  const [selectedSalsa, setSelectedSalsa] = useState<number>(1);
+  const [selectedSalsa, setSelectedSalsa] = useState(1);
 
   const loc = locations[selectedLocation];
   const filteredMenu = menu.filter((item) => item.category === activeCategory);
 
+  const flags = [
+    "#006341", "#F5E7CF", "#C8102E", "#006341", "#F5E7CF", "#C8102E",
+    "#006341", "#F5E7CF", "#C8102E", "#006341", "#F5E7CF", "#C8102E"
+  ];
+
   return (
     <div className="min-h-screen bg-[#110E0C] text-[#F9F6F0] selection:bg-[#C8102E] selection:text-white font-sans">
-      <PapelPicado />
+      {/* Fiesta Top Garland */}
+      <div className="w-full overflow-hidden flex justify-center py-2 bg-[#0C0F0E]" aria-hidden="true">
+        <div className="flex gap-2 min-w-[700px] justify-around opacity-90">
+          {flags.map((color, index) => (
+            <div
+              key={index}
+              className="w-12 h-10 border-b-4 border-dashed border-[#1A1412]"
+              style={{ backgroundColor: color }}
+            />
+          ))}
+        </div>
+      </div>
+
       <div className="h-1.5 w-full bg-gradient-to-r from-[#006341] via-[#F5E7CF] to-[#C8102E]" />
 
+      {/* Navigation */}
       <header className="sticky top-0 z-40 backdrop-blur-md bg-[#110E0C]/90 border-b border-[#2C231F] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -197,20 +154,14 @@ export default function Page() {
           </div>
 
           <div className="hidden md:flex items-center space-x-6 text-sm font-semibold tracking-wide">
-            <a href="#locations" className="hover:text-amber-400 transition-colors">
-              Sucursales
-            </a>
-            <a href="#menu" className="hover:text-amber-400 transition-colors">
-              El Menú
-            </a>
-            <a href="#reviews" className="hover:text-amber-400 transition-colors">
-              Reseñas
-            </a>
+            <a href="#locations" className="hover:text-amber-400 transition-colors">Sucursales</a>
+            <a href="#menu" className="hover:text-amber-400 transition-colors">El Menú</a>
+            <a href="#reviews" className="hover:text-amber-400 transition-colors">Reseñas</a>
           </div>
 
           <a
-            href={`tel:${loc.phone.replace(/[^0-9]/g, "")}`}
-            className="flex items-center space-x-2 bg-[#C8102E] hover:bg-[#A00B22] text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-full shadow-lg shadow-[#C8102E]/30 transition-all"
+            href={"tel:" + loc.phone.replace(/[^0-9]/g, "")}
+            className="flex items-center space-x-2 bg-[#C8102E] hover:bg-[#A00B22] text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-full shadow-lg transition-all"
           >
             <Phone className="w-3.5 h-3.5" />
             <span>Ordenar: {loc.name}</span>
@@ -218,6 +169,7 @@ export default function Page() {
         </div>
       </header>
 
+      {/* Hero Section */}
       <section className="relative px-6 pt-12 pb-16 overflow-hidden">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-7 space-y-6">
@@ -256,7 +208,7 @@ export default function Page() {
 
             <div className="flex items-center space-x-3 pt-3 border-t border-[#261E1A] max-w-md">
               <div className="flex text-amber-400">
-                {[...Array(5)].map((_, i) => (
+                {[0, 1, 2, 3, 4].map((i) => (
                   <Star key={i} className="w-4 h-4 fill-current" />
                 ))}
               </div>
@@ -265,31 +217,39 @@ export default function Page() {
             </div>
           </div>
 
+          {/* Interactive Taco Station */}
           <div className="lg:col-span-5">
-            <div className="bg-[#181310] border border-[#2F241F] rounded-3xl p-6 shadow-2xl relative">
-              <div className="text-center mb-4">
-                <span className="text-[11px] font-bold tracking-widest uppercase text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
-                  Estación Interactiva
-                </span>
-                <h3 className="text-xl font-black mt-2">¡Sumerge Tu Taco en Consomé!</h3>
-                <p className="text-xs text-zinc-400">Presiona el botón para probar la experiencia birria</p>
-              </div>
+            <div className="bg-[#181310] border border-[#2F241F] rounded-3xl p-6 shadow-2xl relative text-center">
+              <span className="text-[11px] font-bold tracking-widest uppercase text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+                Estación Interactiva
+              </span>
+              <h3 className="text-xl font-black mt-2">¡Sumerge Tu Taco en Consomé!</h3>
+              <p className="text-xs text-zinc-400">Presiona el botón para probar la experiencia birria</p>
 
-              <div className="py-2">
-                <TacoIllustration dipping={isDipping} />
-              </div>
-
-              <div className="mt-4 flex flex-col items-center">
-                <button
-                  onClick={() => {
-                    setIsDipping(true);
-                    setTimeout(() => setIsDipping(false), 800);
-                  }}
-                  className="w-full py-3 bg-gradient-to-r from-[#C8102E] to-[#A00B22] hover:from-[#A00B22] text-white font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg transition-transform active:scale-95 cursor-pointer"
+              {/* Visual Taco Component */}
+              <div className="relative w-64 h-52 mx-auto flex flex-col items-center justify-center my-4">
+                <div
+                  className={
+                    "text-7xl transition-transform duration-500 select-none " +
+                    (isDipping ? "translate-y-10 rotate-6 scale-95" : "hover:-translate-y-2")
+                  }
                 >
-                  {isDipping ? "¡Dunking con Todo!" : "🌮 Dale un Dip al Consomé"}
-                </button>
+                  🌮
+                </div>
+                <div className="mt-4 w-40 h-10 bg-[#8F2D1C] rounded-full border-4 border-[#EDB66C] shadow-inner flex items-center justify-center">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#F5D4A2]">Consomé</span>
+                </div>
               </div>
+
+              <button
+                onClick={() => {
+                  setIsDipping(true);
+                  setTimeout(() => setIsDipping(false), 800);
+                }}
+                className="w-full py-3 bg-gradient-to-r from-[#C8102E] to-[#A00B22] hover:from-[#A00B22] text-white font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg transition-transform active:scale-95 cursor-pointer"
+              >
+                {isDipping ? "¡Dunking con Todo!" : "🌮 Dale un Dip al Consomé"}
+              </button>
 
               <div className="mt-6 pt-4 border-t border-[#261E1A]">
                 <div className="flex items-center justify-between text-xs mb-2">
@@ -303,11 +263,12 @@ export default function Page() {
                     <button
                       key={s.name}
                       onClick={() => setSelectedSalsa(idx)}
-                      className={`text-xs py-2 px-2 rounded-lg font-bold border transition-all cursor-pointer ${
-                        selectedSalsa === idx
+                      className={
+                        "text-xs py-2 px-2 rounded-lg font-bold border transition-all cursor-pointer " +
+                        (selectedSalsa === idx
                           ? "bg-white/10 border-amber-400 text-white"
-                          : "bg-transparent border-[#2F241F] text-zinc-400 hover:border-zinc-600"
-                      }`}
+                          : "bg-transparent border-[#2F241F] text-zinc-400 hover:border-zinc-600")
+                      }
                     >
                       {s.name}
                     </button>
@@ -319,6 +280,7 @@ export default function Page() {
         </div>
       </section>
 
+      {/* Dual Locations Switcher */}
       <section id="locations" className="bg-[#16110F] border-y border-[#261E1A] py-10 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center max-w-xl mx-auto mb-8">
@@ -336,11 +298,12 @@ export default function Page() {
                 <button
                   key={item.name}
                   onClick={() => setSelectedLocation(index)}
-                  className={`text-left p-6 rounded-2xl border transition-all cursor-pointer ${
-                    isSelected
+                  className={
+                    "text-left p-6 rounded-2xl border transition-all cursor-pointer " +
+                    (isSelected
                       ? "bg-[#1E1714] border-[#006341] ring-2 ring-[#006341]/40"
-                      : "bg-[#130E0C] border-[#2A201B] hover:border-[#3E3029]"
-                  }`}
+                      : "bg-[#130E0C] border-[#2A201B] hover:border-[#3E3029]")
+                  }
                 >
                   <div className="flex items-center justify-between">
                     <h3 className="font-extrabold text-lg text-white">{item.name}</h3>
@@ -371,6 +334,7 @@ export default function Page() {
         </div>
       </section>
 
+      {/* Menu Grid */}
       <section id="menu" className="py-16 px-6 max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
           <div>
@@ -385,4 +349,96 @@ export default function Page() {
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`text-xs px-
+                className={
+                  "text-xs px-4 py-2 rounded-full font-bold transition-all cursor-pointer " +
+                  (activeCategory === cat
+                    ? "bg-[#C8102E] text-white shadow-md shadow-[#C8102E]/30"
+                    : "bg-[#1C1714] text-zinc-400 hover:text-white border border-[#2F241F]")
+                }
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredMenu.map((item) => (
+            <div
+              key={item.name}
+              className="bg-[#181310] border border-[#2B211C] hover:border-amber-400/40 rounded-2xl p-6 flex flex-col justify-between transition-transform hover:-translate-y-1"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                    {item.label}
+                  </span>
+                  <span className="font-mono font-bold text-lg text-[#82A84B]">
+                    {item.price}
+                  </span>
+                </div>
+                <h3 className="text-xl font-bold text-white">{item.name}</h3>
+                <p className="text-sm text-zinc-400 mt-3 leading-relaxed">{item.description}</p>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-[#261E1A] flex items-center justify-between">
+                <span className="text-xs text-zinc-500">Pídelo en {loc.name}</span>
+                <a
+                  href={"tel:" + loc.phone.replace(/[^0-9]/g, "")}
+                  className="text-xs font-bold text-white bg-white/10 hover:bg-white hover:text-black px-3.5 py-1.5 rounded-lg transition-colors"
+                >
+                  Llamar y Pedir
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Reviews */}
+      <section id="reviews" className="py-14 px-6 bg-[#16110F] border-t border-[#261E1A]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center max-w-xl mx-auto mb-10">
+            <span className="text-xs uppercase font-extrabold tracking-widest text-amber-400">
+              La Voz de Clarksville
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black mt-1">Lo Que Dicen Nuestros Clientes</h2>
+            <p className="text-xs text-zinc-400 mt-1">Reseñas de clientes locales en Google</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {reviews.map((r) => (
+              <div key={r.author} className="bg-[#181310] border border-[#2F241F] rounded-2xl p-6 relative">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#C8102E] block mb-2">
+                  {r.topic}
+                </span>
+                <p className="text-sm text-zinc-300 italic mb-4 leading-relaxed">&ldquo;{r.text}&rdquo;</p>
+                <div className="flex items-center justify-between pt-3 border-t border-[#261E1A]">
+                  <span className="text-xs font-bold text-white">— {r.author}</span>
+                  <div className="flex text-amber-400">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-[#261E1A] bg-[#0E0B0A] py-10 px-6 text-xs text-zinc-500">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div>
+            <p className="font-extrabold text-zinc-300 text-sm">El Grullo Express Taquería</p>
+            <p className="mt-0.5">1951 &amp; 3195 Fort Campbell Blvd, Clarksville, TN</p>
+          </div>
+          <div className="flex space-x-6">
+            <span>© {new Date().getFullYear()} El Grullo Express. Todos los derechos reservados.</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
